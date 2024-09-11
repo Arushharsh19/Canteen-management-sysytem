@@ -1,0 +1,49 @@
+import cv2
+import numpy as np
+import skimage.exposure
+
+# specify desired bgr color for new face and make into array
+desired_color = (180, 128, 200)
+desired_color = np.asarray(desired_color, dtype=np.uint8)
+
+# create swatch
+swatch = np.full((200, 200, 3), desired_color, dtype=np.uint8)
+
+# read image
+img = cv2.imread(r"C:\Users\Nitin Gangwar\Downloads\nitin.png")
+
+# convert image to BGR format
+img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+# read face mask as grayscale and threshold to binary
+facemask = cv2.imread(r"C:\Users\Nitin Gangwar\Downloads\nitin.png", cv2.IMREAD_GRAYSCALE)
+facemask = cv2.threshold(facemask, 128, 255, cv2.THRESH_BINARY)[1]
+
+# get average bgr color of face
+ave_color = cv2.mean(img, mask=facemask)[:3]
+
+# compute difference colors and make into an image the same size as input
+diff_color = desired_color - ave_color
+diff_color = np.full_like(img, diff_color, dtype=np.uint8)
+
+# shift input image color
+# cv2.add clips automatically
+new_img = cv2.add(img, diff_color)
+
+# antialias mask, convert to float in range 0 to 1 and make 3-channels
+facemask = cv2.GaussianBlur(facemask, (0, 0), sigmaX=3, sigmaY=3, borderType=cv2.BORDER_DEFAULT)
+facemask = skimage.exposure.rescale_intensity(facemask, in_range=(100, 150), out_range=(0, 1)).astype(np.float32)
+facemask = cv2.merge([facemask, facemask, facemask])
+
+# combine img and new_img using mask
+result = (img * (1 - facemask) + new_img * facemask)
+result = result.clip(0, 255).astype(np.uint8)
+
+# save result
+cv2.imwrite(r"C:\Users\Nitin Gangwar\Downloads\nitin.png", swatch)
+cv2.imwrite(r"C:\Users\Nitin Gangwar\Downloads\nitin.png", result)
+
+cv2.imshow('swatch', swatch)
+cv2.imshow('result', result)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
